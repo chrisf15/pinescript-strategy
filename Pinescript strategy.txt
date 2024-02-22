@@ -1,0 +1,120 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Niteowl949
+
+//@version=5
+
+indicator(shorttitle="[ZZZ Alex]", title="Modified Bollinger by Alex", overlay=true)
+
+// === INPUTS ===
+
+// Bollinger Bands Inputs
+bb_length = 20 //20 period
+bb_source = close //closing bar price
+//bb_mult = 1.5 //bollinger band multiplier deviation 1.5
+//bb_mult_night = 0.75 //bollinger band multiplier deviation 0.75
+
+
+len0 = 13 //13 bar
+out0 = ta.ema(close, len0)  //10 EMA
+plot(out0, title="13EMA", color=color.yellow, linewidth = 2, style=plot.style_line)
+
+len3 = 200 //200 bar
+out3 = ta.ema(close, len3)  //200 EMA
+plot(out3, title="200EMA", color=close >= out3 ? #00ff00 : #ff0000, linewidth = 4)
+
+bb_mult_day = input.float(title="Bollinger Band Multiplier Day Deviation", defval=2.0, step=0.1)
+sqz_length = 100
+sqz_threshold = 50
+var float ema200range = 0.0
+
+
+showbbbsssSignal2 = input.bool(false, "Crossing Up Buy Zone(▲ blue) or Crossing Down Short Zone(▼ purple)")
+showbbbsssSignal4 = input.bool(true, "Squeeze Play")
+
+// Breakout Indicator Inputs
+bb_basis = ta.ema(bb_source, bb_length)
+dev = ta.stdev(bb_source, bb_length)
+bb_dev = bb_mult_day * dev
+
+// Upper bands 2.0
+bb_upper = bb_basis + bb_dev
+// Lower Bands
+bb_lower = bb_basis - bb_dev
+
+// Calculate BB spread and average spread
+spread = bb_upper - bb_lower
+avgspread = ta.ema(spread, sqz_length)
+
+// Calculate BB relative %width for Squeeze indication
+bb_squeeze = spread / avgspread * 100
+
+// Calculate Upper and Lower band painting offsets based on 50% of atr.
+bb_offset = ta.atr(14) * 0.5
+bb_sqz_upper = bb_upper + bb_offset
+bb_sqz_lower = bb_lower - bb_offset
+
+// === /SERIES ===
+
+length = 20 // 20 bar
+src = close
+basis = ta.ema(src, length) //20 EMA
+dev1 = 1 * ta.stdev(close, length)
+upper = basis + dev1
+lower = basis - dev1
+
+// === PLOTTING ===
+
+// plot BB basis
+p1 = plot(upper, title='upper', color = color.blue, linewidth=3)
+p2 = plot(basis, title='basis', color = (close < bb_basis) ? #ff0000 : #0000ff, linewidth=3)
+p3 = plot(lower, title='lower', color = #ff0000, linewidth=3)
+p4 = plot(bb_sqz_upper)
+p5 = plot(bb_sqz_lower)
+p6 = plot(low, color = (low > upper) ? #d900fe: na, linewidth=2)
+p7 = plot(high, color = (high < lower) ? #d900fe: na, linewidth=2)
+fill(p4,p5, close < basis ? color.rgb(0,0,0,0): na, title = "Buy Only", display=display.none, editable=true)
+fill(p4,p5, close > basis? color.rgb(0,0,0,0): na, title = "Short Only", display=display.none, editable=true)
+fill(p6,p1, low > upper ? color.rgb(217,0,254,0): na)
+fill(p7,p3, high < lower ? color.rgb(217,0,254,0): na)
+
+// plot BB upper bands
+ubi = plot(bb_upper, title="Upper2", color=color.new(color.blue, 10), linewidth=1, display=display.none, editable=false)
+
+//Indicate BB squeeze based on threshold. 2 multiple
+usqzi = plot(bb_sqz_upper, "Upper2", display=display.none, editable=false)
+
+//2nd std (squeeze)
+fill(ubi, usqzi, color=bb_squeeze > sqz_threshold ? color.new(color.white, 70) : color.new(color.red, 80), title = "Upper Day Band", editable=true)
+fill(p1,ubi,color.new(color.blue,30))
+
+//Indicate BB squeeze based on threshold. 0.75 multiple
+lbi = plot(bb_lower, title="Lower2", color=color.new(color.blue, 10), linewidth=1, display=display.none, editable=false)
+
+//Indicate BB squeeze based on threshold. 1.5 multiple
+lsqzi = plot(bb_sqz_lower, "Lower2", display=display.none, editable=false)
+
+//2nd std (squeeze)
+fill(lbi, lsqzi, color=bb_squeeze > sqz_threshold ? color.new(color.white, 70) : color.new(color.red, 80),  title = "Lower Day Band", editable=true)
+fill(p3,lbi,color.new(color.red,50))
+
+bbbuysignal1 = close > upper
+ssshortsignal1 = close < lower
+
+//plotcandle(open, high, low, close, title='Alex BBB', color = close > upper ? color.green : close < lower ? color.yellow:close > lower and close < basis ? color.new(color.red,50): close > basis and close < upper? color.new(color.blue,50):na , wickcolor= close > upper ? #00ff00:close < lower ? #ff0000:close > lower and close < basis? color.new(color.red,50): close > basis and close < upper ? color.new(color.blue,50):na, bordercolor = close > upper ? #00ff00: close < lower ?#ff0000:close > lower and close < basis ? color.new(color.red,50): close > basis and close < upper ? color.new(color.blue,50):na)
+plotcandle(open, high, low, close, title='Alex BBB', color = close > upper ? #00ff00 : close < lower ? #ff0000 :color.black, wickcolor= color.white, bordercolor = close > upper ? #00ff00: close < lower ?#ff0000:close > open? color.green: close < open? color.red: color.white)
+//plotcandle(open, high, low, close, title='Buy Only', color = close < lower and open == high and close < open and low < close and high < basis ? color.yellow :close > upper and open == low and close > open and high > close? color.yellow: close > open ? color.green : close < open ? color.red:color.gray, wickcolor= color.white, bordercolor = close < lower and open == high and close < open and low < close and high < basis ? #ff0000:close > upper and open == low and close > open and high > close? #00ff00: close > basis and close > open ? color.green: close > basis and close < open ? color.red: close < basis and high < basis and close == high and close > open and low < open and low < lower  ? color.green: close < basis and high < basis and open == high and close < open and close > low ? color.red: color.white)
+
+ssshortsignal2 = close < lower// and close[1] > lower
+plotshape(showbbbsssSignal2 and ssshortsignal2, title="Crossing Down into Lower Short Zone (Yellow Bar)", style=shape.labeldown, location=location.abovebar, size=size.small,  text="S", color=color.purple, textcolor=color.white)
+
+bbbuysignal2 = close > upper// and close[1] < upper
+plotshape(showbbbsssSignal2 and bbbuysignal2, title="Crossinbg Up into Upper Buy Zone (Blue Bar)", style=shape.labelup, location=location.belowbar, size=size.small, text="B", color=color.blue, textcolor=color.white)
+
+
+shortSignal4 = bb_squeeze < sqz_threshold and high > bb_upper
+buySignal4 = bb_squeeze < sqz_threshold and low < bb_lower
+plotshape(showbbbsssSignal4 and shortSignal4, title="Upper Band Squeeze Play", style=shape.labeldown, location=location.abovebar, size=size.small, text="SQ", color=#ff0000, textcolor=color.white)
+plotshape(showbbbsssSignal4 and buySignal4, title="Lower Band Squeeze Play", style=shape.labelup, location=location.belowbar, size=size.small, text="SQ", color=#00ff00, textcolor=color.black)
+
+alertcondition(close < lower and close[1] > lower, title="SSS", message="SSS")
+alertcondition(close > upper and close[1] < upper, title="BBB", message="BBB")
